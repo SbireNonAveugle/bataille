@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Calculateur de bataille Geocracy</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#1c1f2a; --card:#262a37; --card2:#2f3443; --line:#3b4152;
+    --gold:#f5c542; --text:#eceef3; --muted:#9aa1b2;
+    --red:#e5484d; --green:#3fb26b; --blue:#4c8dff; --orange:#f0a030;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,system-ui,sans-serif;font-size:15px}
+  .wrap{max-width:860px;margin:0 auto;padding:16px 14px 40px}
+  h1{color:var(--gold);font-size:22px;margin:4px 0 2px;font-weight:800}
+  .sub{color:var(--muted);font-size:13px;margin-bottom:16px}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  @media(max-width:640px){.grid{grid-template-columns:1fr}}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px}
+  .card h2{font-size:15px;margin:0 0 10px;display:flex;align-items:center;gap:8px}
+  .att h2{color:var(--orange)} .def h2{color:var(--blue)}
+  .row{display:grid;grid-template-columns:1fr 110px;align-items:center;gap:8px;margin:6px 0}
+  .row label{font-size:14px}
+  .row label small{color:var(--muted);font-size:11px;display:block}
+  input[type=number]{width:100%;background:var(--card2);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:8px;font-size:15px;text-align:right;font-family:inherit}
+  input[type=number]:focus{outline:2px solid var(--gold);border-color:transparent}
+  .toggles{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+  .tg{display:flex;align-items:center;gap:6px;background:var(--card2);border:1px solid var(--line);border-radius:999px;padding:6px 12px;font-size:13px;cursor:pointer;user-select:none}
+  .tg input{accent-color:var(--gold)}
+  .modes{display:flex;gap:8px;margin:12px 0}
+  .mode{flex:1;text-align:center;padding:10px;border-radius:10px;border:1px solid var(--line);background:var(--card);cursor:pointer;font-weight:600}
+  .mode.on{border-color:var(--gold);color:var(--gold);background:#3a3320}
+  .btns{display:flex;gap:8px;margin-bottom:12px}
+  button{background:var(--card2);color:var(--text);border:1px solid var(--line);border-radius:10px;padding:9px 12px;font-family:inherit;font-size:13px;cursor:pointer}
+  button:hover{border-color:var(--gold)}
+  .result{margin-top:12px}
+  .verdict{font-size:20px;font-weight:800;padding:14px;border-radius:12px;text-align:center;margin-bottom:12px}
+  .v-red{background:#4a2326;color:#ff8a8d} .v-orange{background:#4a3a1e;color:#ffc864}
+  .v-green{background:#1f4430;color:#7ee2a2} .v-blue{background:#1f2f4f;color:#9cc1ff}
+  .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+  .stat{background:var(--card2);border-radius:10px;padding:10px;text-align:center}
+  .stat b{display:block;font-size:20px;color:var(--gold)}
+  .stat span{color:var(--muted);font-size:12px}
+  table{width:100%;border-collapse:collapse;font-size:14px}
+  th,td{padding:7px 6px;border-bottom:1px solid var(--line);text-align:right}
+  th:first-child,td:first-child{text-align:left}
+  th{color:var(--muted);font-weight:600;font-size:12px}
+  .neg{color:var(--red)} .ok{color:var(--green)}
+  .bar{height:10px;background:var(--card2);border-radius:5px;overflow:hidden;margin:6px 0 2px}
+  .bar i{display:block;height:100%;background:linear-gradient(90deg,var(--orange),var(--red))}
+  .need{background:var(--card2);border-radius:10px;padding:10px 12px;margin-top:10px;font-size:14px;line-height:1.5}
+  .warn{background:#4a2326;color:#ffb3b5;border-radius:10px;padding:10px 12px;margin-bottom:10px;font-size:14px}
+  details{margin-top:14px} summary{cursor:pointer;color:var(--gold);font-weight:600}
+  .note{color:var(--muted);font-size:12px;line-height:1.5;margin-top:8px}
+  .tabs{display:flex;gap:6px;margin-bottom:14px;background:var(--card);padding:5px;border-radius:12px;border:1px solid var(--line)}
+  .tab{flex:1;text-align:center;padding:10px 6px;border-radius:9px;cursor:pointer;font-weight:600;font-size:14px;color:var(--muted)}
+  .tab.on{background:var(--gold);color:#1c1f2a}
+  .mode small{display:block;font-weight:400;font-size:11px;color:var(--muted);margin-top:2px}
+  .army{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin:10px 0}
+  .unit{background:var(--card2);border-radius:10px;padding:10px;text-align:center}
+  .unit b{display:block;font-size:22px;color:var(--orange)}
+  .unit span{font-size:12px;color:var(--muted)}
+  .cost{display:flex;gap:14px;flex-wrap:wrap;font-size:14px;margin-top:6px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>⚔️ Calculateur de bataille</h1>
+  <div class="sub">Geocracy · estimation à partir de 11 rapports de bataille réels</div>
+
+  <div class="tabs">
+    <div class="tab on" data-tab="plan">🎯 Planifier une attaque</div>
+    <div class="tab" data-tab="sim">⚔️ Simuler une bataille</div>
+  </div>
+
+  <!-- ===== PLANIFIER ===== -->
+  <div id="planView">
+    <div class="card def">
+      <h2>🛡️ Défenses de la cible</h2>
+      <div id="planRows"></div>
+      <div class="toggles">
+        <label class="tg"><input type="checkbox" id="pShield"> 🛡️ Bouclier bleu (DEF ×1,7)</label>
+        <label class="tg"><input type="checkbox" id="pHeart"> ❤️ Cœur</label>
+        <label class="tg"><input type="checkbox" id="pBolt"> ⚡ J'ai l'éclair (ATQ ×1,8)</label>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:12px">
+      <h2 style="color:var(--gold)">🎯 Objectif</h2>
+      <div class="modes" id="goals">
+        <div class="mode" data-goal="2">Affaiblir<br><small>~55 % de pertes</small></div>
+        <div class="mode on" data-goal="5">Raser<br><small>R = 5</small></div>
+        <div class="mode" data-goal="8">Conquérir<br><small>R = 8 + Héraut</small></div>
+      </div>
+      <h2 style="color:var(--gold);margin-top:6px">🧩 Composition de l'armée</h2>
+      <div class="modes" id="mixes">
+        <div class="mode on" data-mix="sol">Soldats<br><small>simple</small></div>
+        <div class="mode" data-mix="bal">Équilibrée<br><small>Prot / Sol / Arc</small></div>
+        <div class="mode" data-mix="max">Max dégâts<br><small>Prot + Archers</small></div>
+      </div>
+      <div class="row"><label>Marge de sécurité<small>en plus du calcul (renforts, imprécision)</small></label>
+        <input type="number" id="pMargin" min="0" value="20"></div>
+    </div>
+
+    <div class="card result" id="planResult"></div>
+  </div>
+
+  <!-- ===== SIMULER ===== -->
+  <div id="simView" style="display:none">
+  <div class="modes">
+    <div class="mode on" data-mode="raid">✴️ Raid</div>
+    <div class="mode" data-mode="conquest">🚩 Conquête</div>
+  </div>
+
+  <div class="btns">
+    <button id="swap">⇄ Inverser</button>
+    <button id="reset">Remettre à zéro</button>
+  </div>
+
+  <div class="grid">
+    <div class="card att">
+      <h2>🗡️ Attaquant</h2>
+      <div id="attRows"></div>
+      <div class="toggles">
+        <label class="tg"><input type="checkbox" id="attBolt"> ⚡ Éclair (ATQ ×1,8)</label>
+      </div>
+    </div>
+    <div class="card def">
+      <h2>🛡️ Défenseur</h2>
+      <div id="defRows"></div>
+      <div class="toggles">
+        <label class="tg"><input type="checkbox" id="defShield"> 🛡️ Bouclier bleu (DEF ×1,7)</label>
+        <label class="tg"><input type="checkbox" id="defHeart"> ❤️ Cœur</label>
+      </div>
+    </div>
+  </div>
+
+  <div class="card result" id="result"></div>
+  </div>
+
+  <details>
+    <summary>Comment ça marche</summary>
+    <div class="note">
+      <p><b>R</b> = puissance d'attaque de l'attaquant ÷ puissance de défense du défenseur, soit Σ(troupes × ATQ) ÷ Σ(troupes × DEF), avec les bonus des badges.</p>
+      <p><b>Pertes du défenseur ≈ 1 − e<sup>−0,4 × R</sup></b>. Cette formule colle à ±6 points sur les batailles sans badge inconnu.</p>
+      <p>Les unités meurent dans l'ordre de leur portée (DIST) : <b>Protecteur → Soldat → Archer → Éclaireur → Convoyeur</b>. Ce n'est pas strict, mais la première ligne prend nettement plus.</p>
+      <p>Une armée est généralement <b>rasée entre R ≈ 3,5 et 5</b>. Pour une <b>conquête</b>, il ne doit rester <b>aucun survivant</b> et ton <b>Héraut doit survivre</b> : vise R ≥ 8.</p>
+      <p>Badges : 🛡️ bouclier bleu ≈ DEF ×1,7 (4 batailles) · ⚡ éclair ≈ ATQ ×1,8 (1 bataille) · ❤️ cœur ≈ défense ×25, sans doute la Protection (1 bataille) · ▲/▼ grade et poing « +1 » : aucun effet mesuré.</p>
+      <p><b>Pertes de l'attaquant</b> (moins fiables, ±15 points) : Rb = ATQ du défenseur ÷ DEF de l'attaquant, et pertes ≈ 1 − e<sup>−0,75 × √Rb</sup>. L'attaquant est rasé si Rb ≥ 3,5. Si le défenseur est rasé (R ≥ 5), le combat est court et l'attaquant perd environ 5 fois moins.</p>
+      <p>⚠️ C'est une estimation tirée de captures d'écran, pas la formule officielle du jeu.</p>
+    </div>
+    <table id="statTable" style="margin-top:8px"></table>
+  </details>
+</div>
+
+<script>
+const UNITS = [
+  {k:"prot", n:"Protecteur", atq:50,  def:150, dist:0,  s:1.03},
+  {k:"sol",  n:"Soldat",     atq:100, def:70,  dist:10, s:0.92},
+  {k:"arc",  n:"Archer",     atq:280, def:80,  dist:35, s:0.60},
+  {k:"ecl",  n:"Éclaireur",  atq:0,   def:0,   dist:45, s:0.60},
+  {k:"conv", n:"Convoyeur",  atq:20,  def:50,  dist:75, s:0.27},
+  {k:"her",  n:"Héraut",     atq:0,   def:0,   dist:null, s:0.60},
+];
+const K = 0.4, BOLT = 1.8, SHIELD = 1.7, HEART = 25;
+
+// Pertes de l'attaquant (modèle approximatif, ±15 points)
+// Rb = ATQ du défenseur ÷ DEF de l'attaquant ; R = rapport de l'attaque (bonus compris)
+function attackerExp(Rb, R){
+  if (Rb >= 3.5) return Infinity;      // attaquant rasé
+  let y = 0.75*Math.sqrt(Rb);
+  if (R >= 5) y *= 0.2;                // défenseur rasé vite : combat court
+  return y;
+}
+function attackerLosses(a, d){
+  const defAtq = UNITS.reduce((s,u)=>s+d[u.k]*u.atq,0);
+  const attDef = UNITS.reduce((s,u)=>s+a[u.k]*u.def,0);
+  return {defAtq, attDef, Rb: attDef>0 ? defAtq/attDef : Infinity};
+}
+function lossRows(army, y){
+  let rows="", lostVal=0, totVal=0, lostN=0;
+  UNITS.forEach(u=>{
+    if(!army[u.k]) return;
+    const f = y===Infinity ? 1 : 1-Math.exp(-u.s*y);
+    const lost = army[u.k]*f;
+    lostN += lost; lostVal += lost*u.def; totVal += army[u.k]*u.def;
+    rows += `<tr><td>${u.n}</td><td>${fmt(army[u.k])}</td><td class="neg">−${fmt(lost)}</td><td>${fmt(army[u.k]-lost)}</td></tr>`;
+  });
+  return {rows, f: totVal? lostVal/totVal : (y===Infinity?1:0), lostN};
+}
+let mode = "raid";
+
+function rowsHTML(side){
+  return UNITS.map(u=>`<div class="row"><label>${u.n}<small>ATQ ${u.atq} · DEF ${u.def}</small></label>
+  <input type="number" min="0" inputmode="numeric" id="${side}_${u.k}" placeholder="0"></div>`).join("");
+}
+document.getElementById("planRows").innerHTML = rowsHTML("p");
+document.getElementById("attRows").innerHTML = rowsHTML("a");
+document.getElementById("defRows").innerHTML = rowsHTML("d");
+document.getElementById("statTable").innerHTML =
+  `<tr><th>Unité</th><th>ATQ</th><th>DEF</th><th>DIST</th></tr>` +
+  UNITS.map(u=>`<tr><td>${u.n}</td><td>${u.atq}</td><td>${u.def}</td><td>${u.dist??"?"}</td></tr>`).join("");
+
+const val = id => Math.max(0, parseInt(document.getElementById(id).value)||0);
+const fmt = n => Math.round(n).toLocaleString("fr-FR");
+const pct = x => (x*100).toFixed(0) + " %";
+
+function compute(){
+  const a = {}, d = {};
+  UNITS.forEach(u=>{ a[u.k]=val("a_"+u.k); d[u.k]=val("d_"+u.k); });
+  const bolt = document.getElementById("attBolt").checked;
+  const shield = document.getElementById("defShield").checked;
+  const heart = document.getElementById("defHeart").checked;
+
+  let atq = UNITS.reduce((s,u)=>s+a[u.k]*u.atq,0);
+  let def = UNITS.reduce((s,u)=>s+d[u.k]*u.def,0);
+  const atqEff = atq * (bolt?BOLT:1);
+  const defEff = def * (shield?SHIELD:1) * (heart?HEART:1);
+  const out = document.getElementById("result");
+
+  if (atq===0 || def===0){
+    out.innerHTML = `<div class="note" style="text-align:center;font-size:14px">Entre les troupes des deux camps pour voir l'estimation.</div>`;
+    save(); return;
+  }
+  const R = atqEff/defEff;
+  const x = K*R;
+  const wiped = R >= 5;
+  const fTotal = wiped ? 1 : 1-Math.exp(-x);
+
+  // verdict
+  let v, cls;
+  if (heart){ v="❤️ Cible protégée : n'attaque pas"; cls="v-red"; }
+  else if (mode==="conquest"){
+    if (a.her<1){ v="🚩 Pas de Héraut : conquête impossible"; cls="v-red"; }
+    else if (R>=8){ v="🚩 Conquête probable"; cls="v-green"; }
+    else if (R>=5){ v="⚠️ Conquête risquée"; cls="v-orange"; }
+    else { v="❌ Conquête probablement ratée"; cls="v-red"; }
+  } else {
+    if (R>=5){ v="💥 Défenseur rasé"; cls="v-green"; }
+    else if (R>=2){ v="✅ Grosse victoire"; cls="v-green"; }
+    else if (R>=1){ v="🟡 Victoire partielle"; cls="v-blue"; }
+    else if (R>=0.3){ v="🟠 Peu de dégâts"; cls="v-orange"; }
+    else { v="❌ Attaque inutile"; cls="v-red"; }
+  }
+
+  // per-unit
+  let rows="", survivorsTotal=0;
+  UNITS.forEach(u=>{
+    if(!d[u.k]) return;
+    const f = wiped ? 1 : 1-Math.exp(-u.s*x);
+    const lost = d[u.k]*f, left = d[u.k]-lost;
+    survivorsTotal += Math.round(left);
+    rows += `<tr><td>${u.n}</td><td>${fmt(d[u.k])}</td><td class="neg">−${fmt(lost)}</td><td>${fmt(left)}</td></tr>`;
+  });
+
+  // attacker losses
+  const AL = attackerLosses(a, d);
+  const yAtt = heart ? 0.75*Math.sqrt(AL.Rb) : attackerExp(AL.Rb, R);
+  const att = lossRows(a, yAtt);
+  const attWiped = yAtt===Infinity;
+
+  // troops needed
+  const target = mode==="conquest" ? 8 : 5;
+  const needAtq = target*defEff/(bolt?BOLT:1);
+  let needTxt="";
+  if (!heart){
+    if (atq < needAtq){
+      const miss = needAtq-atq;
+      needTxt = `<div class="need">Pour atteindre <b>R = ${target}</b> (${mode==="conquest"?"conquête sûre":"raser le défenseur"}), il te manque <b>${fmt(miss)}</b> d'ATQ, soit environ :<br>
+      ➜ <b>${fmt(Math.ceil(miss/100))} Soldats</b> en plus, ou <b>${fmt(Math.ceil(miss/280))} Archers</b> en plus<br>
+      <span class="note">N'envoie pas des Archers seuls : garde des Protecteurs devant pour encaisser.</span></div>`;
+    } else {
+      needTxt = `<div class="need ok">✔ Tu dépasses R = ${target}. Tu pourrais même envoyer environ <b>${fmt(Math.floor((atq-needAtq)/100))}</b> Soldats de moins.</div>`;
+    }
+  }
+
+  out.innerHTML = `
+    ${heart?'<div class="warn">❤️ Le cœur rend le défenseur quasi invincible (observé : 3 000 troupes envoyées, 37 défenseurs tués).</div>':""}
+    ${mode==="conquest" && a.her<1 && !heart ?'<div class="warn">Ajoute au moins 1 Héraut à l\'attaque. Sans Héraut vivant, pas de conquête.</div>':""}
+    <div class="verdict ${cls}">${v}</div>
+    <div class="stats">
+      <div class="stat"><b>${R>=100?fmt(R):R.toFixed(2)}</b><span>Rapport R</span></div>
+      <div class="stat"><b>${fmt(atqEff)}</b><span>ATQ attaquant${bolt?" (⚡)":""}</span></div>
+      <div class="stat"><b>${fmt(defEff)}</b><span>DEF défenseur${shield||heart?" (bonus)":""}</span></div>
+    </div>
+    <div style="font-size:14px">Pertes estimées du défenseur : <b>${pct(fTotal)}</b>${(!wiped && R>=3.5)?' <span class="note">(seuil de rasage tout proche)</span>':''}</div>
+    <div class="bar"><i style="width:${Math.min(100,fTotal*100)}%"></i></div>
+    <table style="margin-top:10px">
+      <tr><th>Défenseur</th><th>Avant</th><th>Pertes</th><th>Reste</th></tr>${rows}
+    </table>
+    ${mode==="conquest" && survivorsTotal>0 ? `<div class="note">Survivants estimés : ${fmt(survivorsTotal)}. Pour une conquête, il faut 0.</div>`:""}
+
+    <div style="font-size:14px;margin-top:16px">Pertes estimées de l'attaquant : <b>${pct(att.f)}</b>${attWiped?' <span class="neg">(armée rasée)</span>':''} <span class="note">(±15 points)</span></div>
+    <div class="bar"><i style="width:${Math.min(100,att.f*100)}%"></i></div>
+    <table style="margin-top:10px">
+      <tr><th>Attaquant</th><th>Avant</th><th>Pertes</th><th>Reste</th></tr>${att.rows}
+    </table>
+    ${mode==="conquest" && a.her>0 ? (attWiped || att.f>0.5 ? `<div class="warn" style="margin-top:8px">Risque élevé de perdre le Héraut : la conquête échouerait.</div>` : "") : ""}
+    ${needTxt}
+  `;
+  save();
+}
+
+// ===== PLANIFICATEUR =====
+const COST = { // nourriture, bois, eau
+  sol:[10,5,2], arc:[15,15,5], prot:[5,10,10]
+};
+// part de chaque unité (en nombre) selon la composition
+const MIXES = {
+  sol: {sol:1},
+  bal: {prot:0.30, sol:0.40, arc:0.30},
+  max: {prot:0.35, arc:0.65},
+};
+let goal = 5, mix = "sol";
+
+function computePlan(){
+  const d = {}; UNITS.forEach(u=>d[u.k]=val("p_"+u.k));
+  const shield = document.getElementById("pShield").checked;
+  const heart = document.getElementById("pHeart").checked;
+  const bolt = document.getElementById("pBolt").checked;
+  const margin = Math.max(0, parseFloat(document.getElementById("pMargin").value)||0)/100;
+  const out = document.getElementById("planResult");
+  const def = UNITS.reduce((s,u)=>s+d[u.k]*u.def,0);
+  if (def===0){ out.innerHTML=`<div class="note" style="text-align:center;font-size:14px">Entre les défenses de la cible (rapport d'espionnage ou « Défenses observées »).</div>`; save(); return; }
+
+  const defEff = def*(shield?SHIELD:1)*(heart?HEART:1);
+  const needAtq = goal*defEff*(1+margin)/(bolt?BOLT:1);
+  const m = MIXES[mix];
+  const atqPerUnit = Object.entries(m).reduce((s,[k,p])=>s+p*UNITS.find(u=>u.k===k).atq,0);
+  const total = Math.ceil(needAtq/atqPerUnit);
+  const army = {}; Object.entries(m).forEach(([k,p])=>army[k]=Math.ceil(total*p));
+  if (goal===8) army.her = 2;
+
+  let food=0,wood=0,water=0;
+  Object.entries(army).forEach(([k,n])=>{ if(COST[k]){food+=COST[k][0]*n;wood+=COST[k][1]*n;water+=COST[k][2]*n;} });
+  const units = Object.values(army).reduce((a,b)=>a+b,0);
+  const armyFull = {}; UNITS.forEach(u=>armyFull[u.k]=army[u.k]||0);
+  const AL = attackerLosses(armyFull, d);
+  const yAtt = attackerExp(AL.Rb, goal);
+  const att = lossRows(armyFull, yAtt);
+
+  const cards = Object.entries(army).map(([k,n])=>`<div class="unit"><b>${fmt(n)}</b><span>${UNITS.find(u=>u.k===k).n}${k==="her"?" (1 de secours)":""}</span></div>`).join("");
+  const goalTxt = goal===2?"affaiblir la cible (~55 % de pertes)":goal===5?"raser la cible":"conquérir la cible";
+
+  out.innerHTML = `
+    ${heart?'<div class="warn">❤️ Cible protégée par le cœur : il faudrait une armée énorme pour presque rien. Attends que la protection tombe.</div>':""}
+    <div class="verdict v-blue">Armée conseillée pour ${goalTxt}</div>
+    <div class="army">${cards}</div>
+    <div class="stats">
+      <div class="stat"><b>${fmt(needAtq*(bolt?BOLT:1))}</b><span>ATQ visée${bolt?" (avec ⚡)":""}</span></div>
+      <div class="stat"><b>${fmt(defEff)}</b><span>DEF de la cible${shield||heart?" (bonus)":""}</span></div>
+      <div class="stat"><b>${fmt(units)}</b><span>places de caserne</span></div>
+    </div>
+    <div style="font-size:14px">Pertes estimées de ton armée : <b>${pct(att.f)}</b>, soit environ <b>${fmt(att.lostN)}</b> troupes <span class="note">(±15 points)</span></div>
+    <div class="bar"><i style="width:${Math.min(100,att.f*100)}%"></i></div>
+    <div style="font-size:14px;margin-top:10px">Coût d'entraînement si tu dois tout produire :</div>
+    <div class="cost"><span>🥕 ${fmt(food)}</span><span>🪵 ${fmt(wood)}</span><span>💧 ${fmt(water)}</span></div>
+    ${mix==="max"?'<div class="note">Les Protecteurs servent de bouclier : ils prennent les coups pendant que les Archers frappent. Ne retire pas les Protecteurs.</div>':""}
+    ${goal===8?'<div class="note">Conquête : il ne doit rester aucun survivant, et ton Héraut doit survivre. 2 Hérauts par sécurité.</div>':""}
+    <div class="note">Marge de sécurité incluse : +${Math.round(margin*100)} %. Les défenses observées par un espion peuvent dater : espionne juste avant d'attaquer.</div>
+    <div class="btns" style="margin-top:10px"><button id="toSim">⚔️ Vérifier dans le simulateur</button></div>
+  `;
+  document.getElementById("toSim").onclick = ()=>{
+    UNITS.forEach(u=>{
+      document.getElementById("a_"+u.k).value = army[u.k]||"";
+      document.getElementById("d_"+u.k).value = d[u.k]||"";
+    });
+    document.getElementById("attBolt").checked = bolt;
+    document.getElementById("defShield").checked = shield;
+    document.getElementById("defHeart").checked = heart;
+    mode = goal===8 ? "conquest" : "raid";
+    document.querySelectorAll("[data-mode]").forEach(x=>x.classList.toggle("on",x.dataset.mode===mode));
+    showTab("sim"); compute();
+    window.scrollTo(0,0);
+  };
+  save();
+}
+
+// ===== interactions =====
+function showTab(t){
+  document.querySelectorAll(".tab").forEach(x=>x.classList.toggle("on",x.dataset.tab===t));
+  document.getElementById("planView").style.display = t==="plan"?"":"none";
+  document.getElementById("simView").style.display = t==="sim"?"":"none";
+}
+document.querySelectorAll(".tab").forEach(t=>t.addEventListener("click",()=>showTab(t.dataset.tab)));
+document.querySelectorAll("[data-mode]").forEach(m=>m.addEventListener("click",()=>{
+  document.querySelectorAll("[data-mode]").forEach(x=>x.classList.remove("on"));
+  m.classList.add("on"); mode=m.dataset.mode; compute();
+}));
+document.querySelectorAll("[data-goal]").forEach(m=>m.addEventListener("click",()=>{
+  document.querySelectorAll("[data-goal]").forEach(x=>x.classList.remove("on"));
+  m.classList.add("on"); goal=+m.dataset.goal; computePlan();
+}));
+document.querySelectorAll("[data-mix]").forEach(m=>m.addEventListener("click",()=>{
+  document.querySelectorAll("[data-mix]").forEach(x=>x.classList.remove("on"));
+  m.classList.add("on"); mix=m.dataset.mix; computePlan();
+}));
+const recompute = ()=>{ compute(); computePlan(); };
+document.addEventListener("input", recompute);
+document.addEventListener("change", recompute);
+document.getElementById("swap").addEventListener("click",()=>{
+  UNITS.forEach(u=>{
+    const A=document.getElementById("a_"+u.k), D=document.getElementById("d_"+u.k);
+    [A.value,D.value]=[D.value,A.value];
+  });
+  compute();
+});
+document.getElementById("reset").addEventListener("click",()=>{
+  document.querySelectorAll("#simView input[type=number]").forEach(i=>i.value="");
+  document.querySelectorAll("#simView input[type=checkbox]").forEach(i=>i.checked=false);
+  compute();
+});
+
+// remember last inputs in this browser (optional)
+function save(){
+  try{
+    const s={mode,goal,mix};
+    document.querySelectorAll("input").forEach(i=>s[i.id]= i.type==="checkbox"?i.checked:i.value);
+    localStorage.setItem("geocracy_calc",JSON.stringify(s));
+  }catch(e){}
+}
+function load(){
+  try{
+    const s=JSON.parse(localStorage.getItem("geocracy_calc")||"null"); if(!s) return;
+    document.querySelectorAll("input").forEach(i=>{
+      if(!(i.id in s)) return;
+      if(i.type==="checkbox") i.checked=!!s[i.id]; else i.value=s[i.id];
+    });
+    if(s.mode){ mode=s.mode; document.querySelectorAll("[data-mode]").forEach(m=>m.classList.toggle("on",m.dataset.mode===mode)); }
+    if(s.goal){ goal=s.goal; document.querySelectorAll("[data-goal]").forEach(m=>m.classList.toggle("on",+m.dataset.goal===goal)); }
+    if(s.mix){ mix=s.mix; document.querySelectorAll("[data-mix]").forEach(m=>m.classList.toggle("on",m.dataset.mix===mix)); }
+  }catch(e){}
+}
+load(); compute(); computePlan();
+</script>
+</body>
+</html>
