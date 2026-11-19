@@ -357,19 +357,28 @@ function computePlan(){
   const margin = Math.max(0, parseFloat(document.getElementById("pMargin").value)||0)/100;
   const out = document.getElementById("planResult");
   const def = UNITS.reduce((s,u)=>s+d[u.k]*u.def,0);
-  // composition "Contre" : l'unité qui frappe le plus fort contre CETTE cible,
-  // en tenant compte de son bonus et de celui des ennemis qui la contrent
-  let triPick = "arc";
-  {
-    let best = -1;
-    ["sol","chev","arc"].forEach(k=>{
-      const c = unitOf(k).cls;
-      const counteredBy = Object.keys(BEATS).find(x=>BEATS[x]===c);
-      const score = unitOf(k).atq*triMult(k,d)/(1+TRI*enemyShare(d,counteredBy));
-      if (score>best){ best=score; triPick=k; }
+  // composition "Contre" : pour chaque classe ennemie, on envoie l'unité qui la contre,
+  // en proportion de sa part dans l'armée adverse (Soldats → Archers, Chevriers → Soldats,
+  // Archers → Chevriers), avec 35 % de Protecteurs devant.
+  const COUNTER = {inf:"arc", cav:"sol", dist:"chev"};
+  const clsCount = {inf:0, cav:0, dist:0};
+  UNITS.forEach(u=>{ if(u.cls) clsCount[u.cls]+=d[u.k]; });
+  const combat = clsCount.inf+clsCount.cav+clsCount.dist;
+  const triMix = {prot:0.35};
+  let triNote;
+  if (combat>0){
+    Object.entries(clsCount).forEach(([c,n])=>{
+      if(!n) return;
+      const k = COUNTER[c];
+      triMix[k] = (triMix[k]||0) + 0.65*n/combat;
     });
+    triNote = Object.entries(clsCount).filter(([c,n])=>n>0)
+      .map(([c,n])=>`${Math.round(100*n/combat)} % de ${CLS_NAME[c]} → ${unitOf(COUNTER[c]).n}s`).join(" · ");
+  } else {
+    triMix.arc = 0.65;
+    triNote = "La cible n'a que des troupes neutres (Protecteurs…) : aucun contre possible, donc Archers pour leur forte ATQ.";
   }
-  MIXES.tri = {prot:0.35, [triPick]:0.65};
+  MIXES.tri = triMix;
   if (def===0){ out.innerHTML=`<div class="note" style="text-align:center;font-size:14px">Entre les défenses de la cible (rapport d'espionnage ou « Défenses observées »).</div>`; save(); return; }
 
   const m = MIXES[mix];
@@ -406,7 +415,7 @@ function computePlan(){
     <div class="bar"><i style="width:${Math.min(100,att.f*100)}%"></i></div>
     <div style="font-size:14px;margin-top:10px">Coût d'entraînement si tu dois tout produire :</div>
     <div class="cost"><span>🥕 ${fmt(food)}</span><span>🪵 ${fmt(wood)}</span><span>💧 ${fmt(water)}</span></div>
-    ${mix==="tri"?`<div class="note">🔺 Contre : ${unitOf(triPick).n}s (${CLS_NAME[unitOf(triPick).cls]}) choisis d'après la composition de la cible, avec des Protecteurs devant.</div>`:""}
+    ${mix==="tri"?`<div class="note">🔺 Contre : ${triNote}. Avec 35 % de Protecteurs devant pour encaisser.</div>`:""}
     ${mix==="max"?'<div class="note">Les Protecteurs servent de bouclier : ils prennent les coups pendant que les Archers frappent. Ne retire pas les Protecteurs.</div>':""}
     ${goal===8?'<div class="note">Conquête : il ne doit rester aucun survivant, et ton Héraut doit survivre. 2 Hérauts par sécurité.</div>':""}
     <div class="note">Marge de sécurité incluse : +${Math.round(margin*100)} %. Les défenses observées par un espion peuvent dater : espionne juste avant d'attaquer.</div>
