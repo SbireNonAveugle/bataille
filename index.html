@@ -68,7 +68,7 @@
 <body>
 <div class="wrap">
   <h1>⚔️ Calculateur de bataille</h1>
-  <div class="sub">Geocracy · estimation à partir de 11 rapports de bataille réels</div>
+  <div class="sub">Geocracy · estimation à partir de 12 rapports de bataille réels + triangle de combat officiel</div>
 
   <div class="tabs">
     <div class="tab on" data-tab="plan">🎯 Planifier une attaque</div>
@@ -99,6 +99,7 @@
         <div class="mode on" data-mix="sol">Soldats<br><small>simple</small></div>
         <div class="mode" data-mix="bal">Équilibrée<br><small>Prot / Sol / Arc</small></div>
         <div class="mode" data-mix="max">Max dégâts<br><small>Prot + Archers</small></div>
+        <div class="mode" data-mix="tri">Contre<br><small>triangle auto</small></div>
       </div>
       <div class="row"><label>Marge de sécurité<small>en plus du calcul (renforts, imprécision)</small></label>
         <input type="number" id="pMargin" min="0" value="20"></div>
@@ -146,7 +147,8 @@
       <p><b>R</b> = puissance d'attaque de l'attaquant ÷ puissance de défense du défenseur, soit Σ(troupes × ATQ) ÷ Σ(troupes × DEF), avec les bonus des badges.</p>
       <p><b>Pertes du défenseur ≈ 1 − e<sup>−0,4 × R</sup></b>. Cette formule colle à ±6 points sur les batailles sans badge inconnu.</p>
       <p>Les unités meurent dans l'ordre de leur portée (DIST) : <b>Protecteur → Soldat → Chevrier → Archer → Éclaireur → Convoyeur</b>. Ce n'est pas strict, mais la première ligne prend nettement plus.</p>
-      <p><b>Chevrier</b> (nouvelle unité) : d'après sa description, il est fort contre les Archers et vulnérable aux Soldats. Ces contres ne sont pas encore pris en compte, faute de rapport de bataille avec des Chevriers. Sa vitesse de pertes est estimée d'après sa portée (DIST 15).</p>
+      <p>🔺 <b>Triangle de combat</b> (règle officielle) : <b>Infanterie</b> (Soldat) bat <b>Cavalerie</b> (Chevrier), Cavalerie bat <b>Distance</b> (Archer), Distance bat Infanterie. Bonus = <b>30 % × la part d'ennemis contrés</b>, appliqué seulement aux troupes qui contrent, en attaque (ATQ) comme en défense (DEF). Exemple : si 50 % de l'armée adverse sont des Chevriers, tes Soldats ont +15 %. Les troupes neutres (Protecteur, Héraut, Convoyeur, Éclaireur) ne contrent pas et ne sont pas contrées.</p>
+      <p>La vitesse de pertes du <b>Chevrier</b> est estimée d'après sa portée (DIST 15), faute de rapport de bataille avec des Chevriers.</p>
       <p>Une armée est généralement <b>rasée entre R ≈ 3,5 et 5</b>. Pour une <b>conquête</b>, il ne doit rester <b>aucun survivant</b> et ton <b>Héraut doit survivre</b> : vise R ≥ 8.</p>
       <p>Badges : 🛡️ bouclier bleu ≈ DEF ×1,7 (4 batailles) · ⚡ éclair ≈ ATQ ×1,8 (1 bataille) · ❤️ cœur ≈ défense ×25, sans doute la Protection (1 bataille) · ▲/▼ grade et poing « +1 » : aucun effet mesuré.</p>
       <p><b>Pertes de l'attaquant</b> (moins fiables, ±15 points) : Rb = ATQ du défenseur ÷ DEF de l'attaquant, et pertes ≈ 1 − e<sup>−0,75 × √Rb</sup>. L'attaquant est rasé si Rb ≥ 3,5. Si le défenseur est rasé (R ≥ 5), le combat est court et l'attaquant perd environ 5 fois moins.</p>
@@ -159,14 +161,42 @@
 <script>
 const UNITS = [
   {k:"prot", n:"Protecteur", atq:50,  def:150, dist:0,  s:1.03},
-  {k:"sol",  n:"Soldat",     atq:100, def:70,  dist:10, s:0.92},
-  {k:"chev", n:"Chevrier",   atq:190, def:90,  dist:15, s:0.86},
-  {k:"arc",  n:"Archer",     atq:280, def:80,  dist:35, s:0.60},
+  {k:"sol",  n:"Soldat",     atq:100, def:70,  dist:10, s:0.92, cls:"inf"},
+  {k:"chev", n:"Chevrier",   atq:190, def:90,  dist:15, s:0.86, cls:"cav"},
+  {k:"arc",  n:"Archer",     atq:280, def:80,  dist:35, s:0.60, cls:"dist"},
   {k:"ecl",  n:"Éclaireur",  atq:0,   def:0,   dist:45, s:0.60},
   {k:"conv", n:"Convoyeur",  atq:20,  def:50,  dist:75, s:0.27},
   {k:"her",  n:"Héraut",     atq:0,   def:0,   dist:null, s:0.60},
 ];
 const K = 0.4, BOLT = 1.8, SHIELD = 1.7, HEART = 25;
+
+// ===== Triangle de combat (règle officielle) =====
+// Infanterie bat Cavalerie, Cavalerie bat Distance, Distance bat Infanterie.
+// Bonus = 30 % × la part d'ennemis contrés, seulement pour les troupes qui contrent,
+// en attaque comme en défense. Les troupes neutres ne contrent pas et ne sont pas contrées.
+const TRI = 0.30;
+const BEATS = {inf:"cav", cav:"dist", dist:"inf"};
+const CLS_NAME = {inf:"Infanterie", cav:"Cavalerie", dist:"Distance"};
+const unitOf = k => UNITS.find(u=>u.k===k);
+function enemyShare(enemy, cls){
+  const total = UNITS.reduce((s,u)=>s+(enemy[u.k]||0),0);
+  if (!total) return 0;
+  return UNITS.filter(u=>u.cls===cls).reduce((s,u)=>s+(enemy[u.k]||0),0)/total;
+}
+function triMult(k, enemy){
+  const c = unitOf(k).cls;
+  return c ? 1 + TRI*enemyShare(enemy, BEATS[c]) : 1;
+}
+function power(army, enemy, stat){
+  return UNITS.reduce((s,u)=>s+(army[u.k]||0)*u[stat]*triMult(u.k, enemy),0);
+}
+function triSummary(army, enemy, who){
+  const items = UNITS.filter(u=>u.cls && army[u.k]>0).map(u=>{
+    const m = triMult(u.k, enemy);
+    return m>1.0005 ? `${who} ${u.n}s <b>+${Math.round((m-1)*100)} %</b>` : null;
+  }).filter(Boolean);
+  return items;
+}
 
 // Pertes de l'attaquant (modèle approximatif, ±15 points)
 // Rb = ATQ du défenseur ÷ DEF de l'attaquant ; R = rapport de l'attaque (bonus compris)
@@ -177,8 +207,8 @@ function attackerExp(Rb, R){
   return y;
 }
 function attackerLosses(a, d){
-  const defAtq = UNITS.reduce((s,u)=>s+d[u.k]*u.atq,0);
-  const attDef = UNITS.reduce((s,u)=>s+a[u.k]*u.def,0);
+  const defAtq = power(d, a, "atq");
+  const attDef = power(a, d, "def");
   return {defAtq, attDef, Rb: attDef>0 ? defAtq/attDef : Infinity};
 }
 function lossRows(army, y){
@@ -216,8 +246,9 @@ function compute(){
   const shield = document.getElementById("defShield").checked;
   const heart = document.getElementById("defHeart").checked;
 
-  let atq = UNITS.reduce((s,u)=>s+a[u.k]*u.atq,0);
-  let def = UNITS.reduce((s,u)=>s+d[u.k]*u.def,0);
+  let atq = power(a, d, "atq");
+  let def = power(d, a, "def");
+  const triItems = [...triSummary(a, d, "Tes"), ...triSummary(d, a, "Ses")];
   const atqEff = atq * (bolt?BOLT:1);
   const defEff = def * (shield?SHIELD:1) * (heart?HEART:1);
   const out = document.getElementById("result");
@@ -271,7 +302,7 @@ function compute(){
     if (atq < needAtq){
       const miss = needAtq-atq;
       needTxt = `<div class="need">Pour atteindre <b>R = ${target}</b> (${mode==="conquest"?"conquête sûre":"raser le défenseur"}), il te manque <b>${fmt(miss)}</b> d'ATQ, soit environ :<br>
-      ➜ <b>${fmt(Math.ceil(miss/100))} Soldats</b> en plus, ou <b>${fmt(Math.ceil(miss/280))} Archers</b> en plus<br>
+      ➜ <b>${fmt(Math.ceil(miss/(100*triMult("sol",d))))} Soldats</b>, <b>${fmt(Math.ceil(miss/(190*triMult("chev",d))))} Chevriers</b> ou <b>${fmt(Math.ceil(miss/(280*triMult("arc",d))))} Archers</b> en plus<br>
       <span class="note">N'envoie pas des Archers seuls : garde des Protecteurs devant pour encaisser.</span></div>`;
     } else {
       needTxt = `<div class="need ok">✔ Tu dépasses R = ${target}. Tu pourrais même envoyer environ <b>${fmt(Math.floor((atq-needAtq)/100))}</b> Soldats de moins.</div>`;
@@ -287,6 +318,7 @@ function compute(){
       <div class="stat"><b>${fmt(atqEff)}</b><span>ATQ attaquant${bolt?" (⚡)":""}</span></div>
       <div class="stat"><b>${fmt(defEff)}</b><span>DEF défenseur${shield||heart?" (bonus)":""}</span></div>
     </div>
+    ${triItems.length?`<div class="need" style="margin:0 0 12px">🔺 Triangle de combat : ${triItems.join(" · ")}</div>`:""}
     <div style="font-size:14px">Pertes estimées du défenseur : <b>${pct(fTotal)}</b>${(!wiped && R>=3.5)?' <span class="note">(seuil de rasage tout proche)</span>':''}</div>
     <div class="bar"><i style="width:${Math.min(100,fTotal*100)}%"></i></div>
     <table style="margin-top:10px">
@@ -325,12 +357,27 @@ function computePlan(){
   const margin = Math.max(0, parseFloat(document.getElementById("pMargin").value)||0)/100;
   const out = document.getElementById("planResult");
   const def = UNITS.reduce((s,u)=>s+d[u.k]*u.def,0);
+  // composition "Contre" : l'unité qui frappe le plus fort contre CETTE cible,
+  // en tenant compte de son bonus et de celui des ennemis qui la contrent
+  let triPick = "arc";
+  {
+    let best = -1;
+    ["sol","chev","arc"].forEach(k=>{
+      const c = unitOf(k).cls;
+      const counteredBy = Object.keys(BEATS).find(x=>BEATS[x]===c);
+      const score = unitOf(k).atq*triMult(k,d)/(1+TRI*enemyShare(d,counteredBy));
+      if (score>best){ best=score; triPick=k; }
+    });
+  }
+  MIXES.tri = {prot:0.35, [triPick]:0.65};
   if (def===0){ out.innerHTML=`<div class="note" style="text-align:center;font-size:14px">Entre les défenses de la cible (rapport d'espionnage ou « Défenses observées »).</div>`; save(); return; }
 
-  const defEff = def*(shield?SHIELD:1)*(heart?HEART:1);
-  const needAtq = goal*defEff*(1+margin)/(bolt?BOLT:1);
   const m = MIXES[mix];
-  const atqPerUnit = Object.entries(m).reduce((s,[k,p])=>s+p*UNITS.find(u=>u.k===k).atq,0);
+  const atqPerUnit = Object.entries(m).reduce((s,[k,p])=>s+p*unitOf(k).atq*triMult(k,d),0);
+  // la DEF de la cible dépend aussi du triangle face à NOTRE composition
+  const mixArmy = {}; UNITS.forEach(u=>mixArmy[u.k]=(m[u.k]||0)*1000);
+  const defEff = power(d, mixArmy, "def")*(shield?SHIELD:1)*(heart?HEART:1);
+  const needAtq = goal*defEff*(1+margin)/(bolt?BOLT:1);
   const total = Math.ceil(needAtq/atqPerUnit);
   const army = {}; Object.entries(m).forEach(([k,p])=>army[k]=Math.ceil(total*p));
   if (goal===8) army.her = 2;
@@ -359,6 +406,7 @@ function computePlan(){
     <div class="bar"><i style="width:${Math.min(100,att.f*100)}%"></i></div>
     <div style="font-size:14px;margin-top:10px">Coût d'entraînement si tu dois tout produire :</div>
     <div class="cost"><span>🥕 ${fmt(food)}</span><span>🪵 ${fmt(wood)}</span><span>💧 ${fmt(water)}</span></div>
+    ${mix==="tri"?`<div class="note">🔺 Contre : ${unitOf(triPick).n}s (${CLS_NAME[unitOf(triPick).cls]}) choisis d'après la composition de la cible, avec des Protecteurs devant.</div>`:""}
     ${mix==="max"?'<div class="note">Les Protecteurs servent de bouclier : ils prennent les coups pendant que les Archers frappent. Ne retire pas les Protecteurs.</div>':""}
     ${goal===8?'<div class="note">Conquête : il ne doit rester aucun survivant, et ton Héraut doit survivre. 2 Hérauts par sécurité.</div>':""}
     <div class="note">Marge de sécurité incluse : +${Math.round(margin*100)} %. Les défenses observées par un espion peuvent dater : espionne juste avant d'attaquer.</div>
